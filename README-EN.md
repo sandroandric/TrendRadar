@@ -106,19 +106,11 @@ This project uses the API from [newsnow](https://github.com/ourongxing/newsnow) 
 
 ### **Multi-Platform Trending News Aggregation**
 
-- Zhihu (知乎)
-- Douyin (抖音)
-- Bilibili Hot Search
-- Wallstreetcn (华尔街见闻)
-- Tieba (贴吧)
-- Baidu Hot Search
-- Yicai (财联社)
-- Thepaper (澎湃新闻)
-- Ifeng (凤凰网)
-- Toutiao (今日头条)
-- Weibo (微博)
+- Hacker News
+- Product Hunt
+- GitHub Trending
 
-Default monitoring of 11 mainstream platforms, with support for adding custom platforms.
+Default monitoring of 3 mainstream tech platforms, with support for adding custom platforms.
 
 <details id="custom-monitoring-platforms">
 <summary><strong>👉 Click to expand: Custom Monitoring Platforms</strong></summary>

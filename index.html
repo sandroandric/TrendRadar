@@ -1,747 +1,463 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>热点新闻分析</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSKda6FXzoEyYGjTe+vXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <style>
-        * {
-            box-sizing: border-box;
-        }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-            margin: 0;
-            padding: 16px;
-            background: #fafafa;
-            color: #333;
-            line-height: 1.5;
-        }
 
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 2px 16px rgba(0, 0, 0, 0.06);
-        }
-
-        .header {
-            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-            color: white;
-            padding: 32px 24px;
-            text-align: center;
-            position: relative;
-        }
-
-        .save-buttons {
-            position: absolute;
-            top: 16px;
-            right: 16px;
-            display: flex;
-            gap: 8px;
-        }
-
-        .save-btn {
-            background: rgba(255, 255, 255, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            color: white;
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: 500;
-            transition: all 0.2s ease;
-            backdrop-filter: blur(10px);
-            white-space: nowrap;
-        }
-
-        .save-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-            border-color: rgba(255, 255, 255, 0.5);
-            transform: translateY(-1px);
-        }
-
-        .save-btn:active {
-            transform: translateY(0);
-        }
-
-        .save-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-
-        .header-title {
-            font-size: 22px;
-            font-weight: 700;
-            margin: 0 0 20px 0;
-        }
-
-        .header-info {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-            font-size: 14px;
-            opacity: 0.95;
-        }
-
-        .info-item {
-            text-align: center;
-        }
-
-        .info-label {
-            display: block;
-            font-size: 12px;
-            opacity: 0.8;
-            margin-bottom: 4px;
-        }
-
-        .info-value {
-            font-weight: 600;
-            font-size: 16px;
-        }
-
-        .content {
-            padding: 24px;
-        }
-
-        .word-group {
-            margin-bottom: 40px;
-        }
-
-        .word-group:first-child {
-            margin-top: 0;
-        }
-
-        .word-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 20px;
-            padding-bottom: 8px;
-            border-bottom: 1px solid #f0f0f0;
-        }
-
-        .word-info {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .word-name {
-            font-size: 17px;
-            font-weight: 600;
-            color: #1a1a1a;
-        }
-
-        .word-count {
-            color: #666;
-            font-size: 13px;
-            font-weight: 500;
-        }
-
-        .word-count.hot {
-            color: #dc2626;
-            font-weight: 600;
-        }
-
-        .word-count.warm {
-            color: #ea580c;
-            font-weight: 600;
-        }
-
-        .word-index {
-            color: #999;
-            font-size: 12px;
-        }
-
-        .news-item {
-            margin-bottom: 20px;
-            padding: 16px 0;
-            border-bottom: 1px solid #f5f5f5;
-            position: relative;
-            display: flex;
-            gap: 12px;
-            align-items: center;
-        }
-
-        .news-item:last-child {
-            border-bottom: none;
-        }
-
-        .news-number {
-            color: #999;
-            font-size: 13px;
-            font-weight: 600;
-            min-width: 20px;
-            text-align: center;
-            flex-shrink: 0;
-            background: #f8f9fa;
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            align-self: flex-start;
-            margin-top: 8px;
-        }
-
-        .news-content {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .news-header {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 8px;
-            flex-wrap: wrap;
-        }
-
-        .source-name {
-            color: #666;
-            font-size: 12px;
-            font-weight: 500;
-        }
-
-        .rank-num {
-            color: #fff;
-            background: #6b7280;
-            font-size: 10px;
-            font-weight: 700;
-            padding: 2px 6px;
-            border-radius: 10px;
-            min-width: 18px;
-            text-align: center;
-        }
-
-        .rank-num.top {
-            background: #dc2626;
-        }
-
-        .rank-num.high {
-            background: #ea580c;
-        }
-
-        .time-info {
-            color: #999;
-            font-size: 11px;
-        }
-
-        .count-info {
-            color: #059669;
-            font-size: 11px;
-            font-weight: 500;
-        }
-
-        .news-title {
-            font-size: 15px;
-            line-height: 1.4;
-            color: #1a1a1a;
-            margin: 0;
-        }
-
-        .news-link {
-            color: #2563eb;
-            text-decoration: none;
-        }
-
-        .news-link:hover {
-            text-decoration: underline;
-        }
-
-        .news-link:visited {
-            color: #7c3aed;
-        }
-
-        .footer {
-            margin-top: 32px;
-            padding: 20px 24px;
-            background: #f8f9fa;
-            border-top: 1px solid #e5e7eb;
-            text-align: center;
-        }
-
-        .footer-content {
-            font-size: 13px;
-            color: #6b7280;
-            line-height: 1.6;
-        }
-
-        .footer-link {
-            color: #4f46e5;
-            text-decoration: none;
-            font-weight: 500;
-            transition: color 0.2s ease;
-        }
-
-        .footer-link:hover {
-            color: #7c3aed;
-            text-decoration: underline;
-        }
-
-        .project-name {
-            font-weight: 600;
-            color: #374151;
-        }
-
-        @media (max-width: 480px) {
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>TrendRadar Report</title>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+        <style>
+            :root {
+                --primary: #2563eb;
+                --primary-dark: #1e40af;
+                --bg-color: #f3f4f6;
+                --card-bg: #ffffff;
+                --text-main: #111827;
+                --text-secondary: #6b7280;
+                --border-color: #e5e7eb;
+                --accent-hot: #ef4444;
+                --accent-warm: #f97316;
+                --accent-new: #10b981;
+            }
+            
             body {
-                padding: 12px;
-            }
-            .header {
-                padding: 24px 20px;
-            }
-            .content {
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                background-color: var(--bg-color);
+                color: var(--text-main);
+                margin: 0;
                 padding: 20px;
+                line-height: 1.5;
+                -webkit-font-smoothing: antialiased;
             }
-            .footer {
-                padding: 16px 20px;
+            
+            .container {
+                max-width: 680px;
+                margin: 0 auto;
+                background: var(--card-bg);
+                border-radius: 16px;
+                overflow: hidden;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             }
-            .header-info {
-                grid-template-columns: 1fr;
-                gap: 12px;
+            
+            /* Header Section */
+            .header {
+                background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+                color: white;
+                padding: 40px 32px;
+                position: relative;
             }
-            .news-header {
-                gap: 6px;
+            
+            .brand {
+                font-size: 14px;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                opacity: 0.8;
+                margin-bottom: 12px;
+                display: block;
             }
-            .news-item {
+            
+            .title {
+                font-size: 28px;
+                font-weight: 800;
+                margin: 0;
+                letter-spacing: -0.5px;
+                line-height: 1.2;
+            }
+            
+            .subtitle {
+                font-size: 16px;
+                opacity: 0.9;
+                margin-top: 8px;
+                font-weight: 400;
+            }
+            
+            /* Stats Grid */
+            .stats-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 1px;
+                background: var(--border-color);
+                border-bottom: 1px solid var(--border-color);
+            }
+            
+            .stat-item {
+                background: var(--card-bg);
+                padding: 20px;
+                text-align: center;
+            }
+            
+            .stat-value {
+                display: block;
+                font-size: 24px;
+                font-weight: 700;
+                color: var(--primary);
+                margin-bottom: 4px;
+            }
+            
+            .stat-label {
+                font-size: 12px;
+                color: var(--text-secondary);
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                font-weight: 600;
+            }
+            
+            /* Content Area */
+            .content {
+                padding: 32px;
+            }
+            
+            /* Section Headers */
+            .section-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-bottom: 24px;
+                padding-bottom: 12px;
+                border-bottom: 2px solid var(--bg-color);
+            }
+            
+            .section-title {
+                font-size: 18px;
+                font-weight: 700;
+                color: var(--text-main);
+                display: flex;
+                align-items: center;
                 gap: 8px;
             }
-            .news-number {
-                width: 20px;
-                height: 20px;
+            
+            .section-badge {
+                background: var(--bg-color);
+                padding: 4px 10px;
+                border-radius: 20px;
                 font-size: 12px;
+                font-weight: 600;
+                color: var(--text-secondary);
             }
-            .save-buttons {
-                position: static;
+            
+            /* Word Groups */
+            .word-group {
+                margin-bottom: 40px;
+            }
+            
+            .word-header {
+                display: flex;
+                align-items: center;
                 margin-bottom: 16px;
+            }
+            
+            .keyword {
+                font-size: 20px;
+                font-weight: 700;
+                color: var(--text-main);
+                margin-right: 12px;
+            }
+            
+            .keyword-count {
+                font-size: 13px;
+                font-weight: 600;
+                padding: 2px 8px;
+                border-radius: 6px;
+                background: var(--bg-color);
+                color: var(--text-secondary);
+            }
+            
+            .keyword-count.hot { background: #fee2e2; color: var(--accent-hot); }
+            .keyword-count.warm { background: #ffedd5; color: var(--accent-warm); }
+            
+            /* News Items */
+            .news-list {
+                display: flex;
+                flex-direction: column;
+                gap: 16px;
+            }
+            
+            .news-card {
+                background: white;
+                border: 1px solid var(--border-color);
+                border-radius: 12px;
+                padding: 16px;
+                transition: transform 0.2s, box-shadow 0.2s;
+                position: relative;
+                text-decoration: none;
+                display: block;
+            }
+            
+            .news-card:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+                border-color: var(--primary);
+            }
+            
+            .news-meta {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                margin-bottom: 10px;
+                font-size: 12px;
+                flex-wrap: wrap;
+            }
+            
+            .source-badge {
+                background: var(--bg-color);
+                color: var(--text-main);
+                padding: 2px 8px;
+                border-radius: 4px;
+                font-weight: 600;
+            }
+            
+            .rank-badge {
+                background: var(--text-main);
+                color: white;
+                padding: 2px 6px;
+                border-radius: 4px;
+                font-weight: 700;
+            }
+            
+            .rank-badge.top { background: var(--accent-hot); }
+            .rank-badge.high { background: var(--accent-warm); }
+            
+            .time-badge {
+                color: var(--text-secondary);
+                display: flex;
+                align-items: center;
+                gap: 4px;
+            }
+            
+            .news-title {
+                font-size: 16px;
+                font-weight: 600;
+                color: var(--text-main);
+                line-height: 1.4;
+                margin: 0;
+            }
+            
+            .news-card:visited .news-title {
+                color: #4b5563;
+            }
+            
+            .new-badge {
+                position: absolute;
+                top: -8px;
+                right: -8px;
+                background: var(--accent-new);
+                color: white;
+                font-size: 10px;
+                font-weight: 700;
+                padding: 4px 8px;
+                border-radius: 12px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                text-transform: uppercase;
+            }
+            
+            /* Footer */
+            .footer {
+                background: var(--bg-color);
+                padding: 32px;
+                text-align: center;
+                border-top: 1px solid var(--border-color);
+            }
+            
+            .footer-text {
+                font-size: 13px;
+                color: var(--text-secondary);
+                margin-bottom: 8px;
+            }
+            
+            .footer-link {
+                color: var(--primary);
+                text-decoration: none;
+                font-weight: 600;
+            }
+            
+            .version-info {
+                display: inline-block;
+                margin-top: 12px;
+                padding: 4px 12px;
+                background: #fff;
+                border: 1px solid var(--border-color);
+                border-radius: 20px;
+                font-size: 12px;
+                color: var(--text-secondary);
+            }
+            
+            /* Save Buttons */
+            .action-bar {
+                position: absolute;
+                top: 20px;
+                right: 20px;
                 display: flex;
                 gap: 8px;
-                justify-content: center;
-                flex-direction: column;
-                width: 100%;
             }
-            .save-btn {
-                width: 100%;
+            
+            .btn {
+                background: rgba(255,255,255,0.1);
+                border: 1px solid rgba(255,255,255,0.2);
+                color: white;
+                padding: 6px 12px;
+                border-radius: 6px;
+                font-size: 12px;
+                font-weight: 500;
+                cursor: pointer;
+                backdrop-filter: blur(4px);
+                transition: background 0.2s;
             }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <div class="save-buttons">
-                <button class="save-btn" onclick="saveAsImage()">保存为图片</button>
-                <button class="save-btn" onclick="saveAsMultipleImages()">分段保存</button>
+            
+            .btn:hover {
+                background: rgba(255,255,255,0.2);
+            }
+            
+            @media (max-width: 480px) {
+                body { padding: 0; }
+                .container { border-radius: 0; }
+                .stats-grid { grid-template-columns: 1fr; }
+                .stat-item { border-bottom: 1px solid var(--border-color); }
+                .header { padding: 32px 20px; }
+                .content { padding: 20px; }
+                .action-bar { position: static; margin-bottom: 20px; justify-content: center; }
+                .btn { background: rgba(255,255,255,0.15); color: white; }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <div class="action-bar">
+                    <button class="btn" onclick="saveAsImage()">Save Image</button>
+                    <button class="btn" onclick="saveAsMultipleImages()">Save Segments</button>
+                </div>
+                <span class="brand">TrendRadar AI</span>
+                <h1 class="title">Daily Summary</h1>
+                <div class="subtitle">Nov 19, 04:28</div>
             </div>
-            <div class="header-title">热点新闻分析</div>
-            <div class="header-info">
-                <div class="info-item">
-                    <span class="info-label">报告类型</span>
-                    <span class="info-value">当日汇总</span>
+            
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <span class="stat-value">75</span>
+                    <span class="stat-label">Total News</span>
                 </div>
-                <div class="info-item">
-                    <span class="info-label">新闻总数</span>
-                    <span class="info-value">387 条</span>
+                <div class="stat-item">
+                    <span class="stat-value">5</span>
+                    <span class="stat-label">Trending</span>
                 </div>
-                <div class="info-item">
-                    <span class="info-label">热点新闻</span>
-                    <span class="info-value">5 条</span>
+                <div class="stat-item">
+                    <span class="stat-value">0</span>
+                    <span class="stat-label">New Sources</span>
                 </div>
-                <div class="info-item">
-                    <span class="info-label">生成时间</span>
-                    <span class="info-value">06-16 07:17</span>
-                </div>
+            </div>
+            
+            <div class="content">
+    
+        <div class="section-header">
+            <div class="section-title">
+                <span>🔥 Trending Topics</span>
             </div>
         </div>
-
-        <div class="content">
+        
             <div class="word-group">
                 <div class="word-header">
-                    <div class="word-info">
-                        <div class="word-name">ai 人工智能</div>
-                        <div class="word-count hot">3 条</div>
-                    </div>
-                    <div class="word-index">1/4</div>
+                    <span class="keyword">OpenAI ChatGPT GPT-4 GPT-5 Claude Anthropic Gemini Google DeepMind Llama Meta AI Mistral Stable Diffusion Midjourney</span>
+                    <span class="keyword-count warm">5 items</span>
                 </div>
-
-                <div class="news-item">
-                    <div class="news-number">1</div>
-                    <div class="news-content">
-                        <div class="news-header">
-                            <span class="source-name">财联社热门</span>
-                            <span class="rank-num high">7-8</span>
-                            <span class="time-info">00:23~07:17</span>
-                            <span class="count-info">15次</span>
-                        </div>
-                        <div class="news-title">
-                            <a href="https://www.cls.cn/detail/2057563" target="_blank" class="news-link">上市首日暴涨140% 军用无人机公司登陆纽交所 AI打造产品核心竞争力</a>
-                        </div>
+                <div class="news-list">
+            
+                <a href="https://news.ycombinator.com/item?id=45967211" target="_blank" class="news-card">
+                    
+                    <div class="news-meta">
+                        <span class="source-badge">Hacker News</span>
+                        <span class="rank-badge top">#1</span>
+                        <span class="time-badge">🕒 04-08 ~ 04-28</span>
                     </div>
-                </div>
-
-                <div class="news-item">
-                    <div class="news-number">2</div>
-                    <div class="news-content">
-                        <div class="news-header">
-                            <span class="source-name">tieba</span>
-                            <span class="rank-num">18-19</span>
-                            <span class="time-info">00:23~07:17</span>
-                            <span class="count-info">15次</span>
-                        </div>
-                        <div class="news-title">
-                            <a href="https://tieba.baidu.com/hottopic/browse/hottopic?topic_id=28342819&topic_name=%E4%BC%8A%E6%9C%97%E7%96%91%E7%94%A8AI%E4%BC%AA%E9%80%A0%E4%BB%A5%E5%86%9BF35%E6%AE%8B%E9%AA%B8%E5%9B%BE" target="_blank" class="news-link">伊朗疑用AI伪造以军F35残骸图</a>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="news-item">
-                    <div class="news-number">3</div>
-                    <div class="news-content">
-                        <div class="news-header">
-                            <span class="source-name">zhihu</span>
-                            <span class="rank-num top">5-13</span>
-                            <span class="time-info">00:23~07:17</span>
-                            <span class="count-info">15次</span>
-                        </div>
-                        <div class="news-title">
-                            <a href="https://www.zhihu.com/question/596907281" target="_blank" class="news-link">罗杰·彭罗斯说无论意识是什么，都绝对不是一种计算。意思是：任何 AI 都不可能产生意识？</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="word-group">
-                <div class="word-header">
-                    <div class="word-info">
-                        <div class="word-name">DeepSeek 梁文锋</div>
-                        <div class="word-count">1 条</div>
-                    </div>
-                    <div class="word-index">2/4</div>
-                </div>
-
-                <div class="news-item">
-                    <div class="news-number">1</div>
-                    <div class="news-content">
-                        <div class="news-header">
-                            <span class="source-name">华尔街见闻</span>
-                            <span class="rank-num high">8-9</span>
-                            <span class="time-info">00:23~07:17</span>
-                            <span class="count-info">15次</span>
-                        </div>
-                        <div class="news-title">
-                            <a href="https://wallstreetcn.com/articles/3749141" target="_blank" class="news-link">恒生生科指数1月以来涨超60%，中国创新药的"DeepSeek时刻"超过了AI</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="word-group">
-                <div class="word-header">
-                    <div class="word-info">
-                        <div class="word-name">哪吒 饺子</div>
-                        <div class="word-count">1 条</div>
-                    </div>
-                    <div class="word-index">3/4</div>
-                </div>
-
-                <div class="news-item">
-                    <div class="news-number">1</div>
-                    <div class="news-content">
-                        <div class="news-header">
-                            <span class="source-name">百度热搜</span>
-                            <span class="rank-num">24-30</span>
-                            <span class="time-info">00:57~06:55</span>
-                            <span class="count-info">7次</span>
-                        </div>
-                        <div class="news-title">
-                            <a href="https://www.baidu.com/s?wd=%E3%80%8A%E5%93%AA%E5%90%922%E3%80%8B%E7%89%87%E6%96%B9%E6%88%96%E5%88%86%E8%B4%A652%E4%BA%BF%E5%85%83" target="_blank" class="news-link">《哪吒2》片方或分账52亿元</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="word-group">
-                <div class="word-header">
-                    <div class="word-info">
-                        <div class="word-name">米哈游 原神 星穹铁道</div>
-                        <div class="word-count">1 条</div>
-                    </div>
-                    <div class="word-index">4/4</div>
-                </div>
-
-                <div class="news-item">
-                    <div class="news-number">1</div>
-                    <div class="news-content">
-                        <div class="news-header">
-                            <span class="source-name">zhihu</span>
-                            <span class="rank-num top">5</span>
-                            <span class="time-info">06:55~07:17</span>
-                            <span class="count-info">2次</span>
-                        </div>
-                        <div class="news-title">
-                            <a href="https://www.zhihu.com/question/1905395386765537540" target="_blank" class="news-link">目前原神所有自机角色谁最有可能出新形态?</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="footer">
-            <div class="footer-content">
-                由 <span class="project-name">TrendRadar</span> 生成 · 
-                <a href="https://github.com/sansan0/TrendRadar" target="_blank" class="footer-link">
-                    GitHub 开源项目
+                    <h3 class="news-title">Gemini 3</h3>
                 </a>
+                
+                <a href="https://news.ycombinator.com/item?id=45970519" target="_blank" class="news-card">
+                    
+                    <div class="news-meta">
+                        <span class="source-badge">Hacker News</span>
+                        <span class="rank-badge high">#6-12</span>
+                        <span class="time-badge">🕒 04-08 ~ 04-28</span>
+                    </div>
+                    <h3 class="news-title">Trying out Gemini 3 Pro with audio transcription and a new pelican benchmark</h3>
+                </a>
+                
+                <a href="https://www.producthunt.com/products/openai/launches/chatgpt-atlas?utm_campaign=producthunt-api&utm_medium=api-v2&utm_source=Application%3A+newsnow+%28ID%3A+239216%29" target="_blank" class="news-card">
+                    
+                    <div class="news-meta">
+                        <span class="source-badge">Product Hunt</span>
+                        <span class="rank-badge high">#9</span>
+                        <span class="time-badge">🕒 04-08 ~ 04-28</span>
+                    </div>
+                    <h3 class="news-title">ChatGPT Atlas</h3>
+                </a>
+                
+                <a href="https://news.ycombinator.com/item?id=45970338" target="_blank" class="news-card">
+                    
+                    <div class="news-meta">
+                        <span class="source-badge">Hacker News</span>
+                        <span class="rank-badge high">#10-14</span>
+                        <span class="time-badge">🕒 04-08 ~ 04-28</span>
+                    </div>
+                    <h3 class="news-title">Show HN: RowboatX – open-source Claude Code for everyday automations</h3>
+                </a>
+                
+                <a href="https://news.ycombinator.com/item?id=45963836" target="_blank" class="news-card">
+                    
+                    <div class="news-meta">
+                        <span class="source-badge">Hacker News</span>
+                        <span class="rank-badge ">#16-17</span>
+                        <span class="time-badge">🕒 04-08 ~ 04-28</span>
+                    </div>
+                    <h3 class="news-title">Gemini 3 Pro Model Card</h3>
+                </a>
+                
+                </div>
+            </div>
+            
+            </div>
+            <div class="footer">
+                <div class="footer-text">
+                    Generated by <a href="https://github.com/sansan0/TrendRadar" class="footer-link">TrendRadar</a>
+                </div>
+    
             </div>
         </div>
-    </div>
-
-    <script>
-        async function saveAsImage() {
-            const button = event.target;
-            const originalText = button.textContent;
-            
-            try {
-                button.textContent = '生成中...';
-                button.disabled = true;
-                window.scrollTo(0, 0);
-                
-                await new Promise(resolve => setTimeout(resolve, 200));
-                
-                const buttons = document.querySelector('.save-buttons');
-                buttons.style.visibility = 'hidden';
-                
-                await new Promise(resolve => setTimeout(resolve, 100));
-                
-                const container = document.querySelector('.container');
-                
-                const canvas = await html2canvas(container, {
-                    backgroundColor: '#ffffff',
-                    scale: 1.5,
-                    useCORS: true,
-                    allowTaint: false,
-                    imageTimeout: 10000,
-                    removeContainer: false,
-                    foreignObjectRendering: false,
-                    logging: false,
-                    width: container.offsetWidth,
-                    height: container.offsetHeight,
-                    x: 0,
-                    y: 0,
-                    scrollX: 0,
-                    scrollY: 0,
-                    windowWidth: window.innerWidth,
-                    windowHeight: window.innerHeight
-                });
-                
-                buttons.style.visibility = 'visible';
-                
-                const link = document.createElement('a');
-                const now = new Date();
-                const filename = `TrendRadar_热点新闻分析_${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}.png`;
-                
-                link.download = filename;
-                link.href = canvas.toDataURL('image/png', 1.0);
-                
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                
-                button.textContent = '保存成功!';
-                setTimeout(() => {
-                    button.textContent = originalText;
-                    button.disabled = false;
-                }, 2000);
-                
-            } catch (error) {
-                const buttons = document.querySelector('.save-buttons');
-                buttons.style.visibility = 'visible';
-                button.textContent = '保存失败';
-                setTimeout(() => {
-                    button.textContent = originalText;
-                    button.disabled = false;
-                }, 2000);
-            }
-        }
         
-        async function saveAsMultipleImages() {
-            const button = event.target;
-            const originalText = button.textContent;
-            const container = document.querySelector('.container');
-            const scale = 1.5;
-            const maxHeight = 5000 / scale;
-            
-            try {
-                button.textContent = '分析中...';
-                button.disabled = true;
+        <script>
+            // Simple save functionality
+            async function saveAsImage() {
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = 'Saving...';
                 
-                const wordGroups = Array.from(container.querySelectorAll('.word-group'));
-                const header = container.querySelector('.header');
-                const footer = container.querySelector('.footer');
-                
-                const containerRect = container.getBoundingClientRect();
-                const elements = [];
-                
-                elements.push({
-                    type: 'header',
-                    element: header,
-                    top: 0,
-                    bottom: header.offsetHeight,
-                    height: header.offsetHeight
-                });
-                
-                wordGroups.forEach(group => {
-                    const groupRect = group.getBoundingClientRect();
-                    const wordHeader = group.querySelector('.word-header');
-                    if (wordHeader) {
-                        const headerRect = wordHeader.getBoundingClientRect();
-                        elements.push({
-                            type: 'word-header',
-                            top: groupRect.top - containerRect.top,
-                            bottom: headerRect.bottom - containerRect.top,
-                            height: headerRect.height
-                        });
-                    }
-                    
-                    group.querySelectorAll('.news-item').forEach(item => {
-                        const rect = item.getBoundingClientRect();
-                        elements.push({
-                            type: 'news-item',
-                            top: rect.top - containerRect.top,
-                            bottom: rect.bottom - containerRect.top,
-                            height: rect.height
-                        });
-                    });
-                });
-                
-                const footerRect = footer.getBoundingClientRect();
-                elements.push({
-                    type: 'footer',
-                    top: footerRect.top - containerRect.top,
-                    bottom: footerRect.bottom - containerRect.top,
-                    height: footer.offsetHeight
-                });
-                
-                const segments = [];
-                let currentSegment = { start: 0, end: 0, height: 0 };
-                let headerHeight = header.offsetHeight;
-                currentSegment.height = headerHeight;
-                
-                for (let i = 1; i < elements.length; i++) {
-                    const element = elements[i];
-                    const potentialHeight = element.bottom - currentSegment.start;
-                    
-                    if (potentialHeight > maxHeight && currentSegment.height > headerHeight) {
-                        currentSegment.end = elements[i - 1].bottom;
-                        segments.push(currentSegment);
-                        
-                        currentSegment = {
-                            start: currentSegment.end,
-                            end: 0,
-                            height: element.bottom - currentSegment.end
-                        };
-                    } else {
-                        currentSegment.height = potentialHeight;
-                        currentSegment.end = element.bottom;
-                    }
-                }
-                
-                if (currentSegment.height > 0) {
-                    currentSegment.end = container.offsetHeight;
-                    segments.push(currentSegment);
-                }
-                
-                button.textContent = `生成中 (0/${segments.length})...`;
-                
-                const buttons = document.querySelector('.save-buttons');
-                buttons.style.visibility = 'hidden';
-                
-                const images = [];
-                for (let i = 0; i < segments.length; i++) {
-                    const segment = segments[i];
-                    button.textContent = `生成中 (${i + 1}/${segments.length})...`;
-                    
-                    const tempContainer = document.createElement('div');
-                    tempContainer.style.cssText = `
-                        position: absolute;
-                        left: -9999px;
-                        top: 0;
-                        width: ${container.offsetWidth}px;
-                        background: white;
-                    `;
-                    
-                    const clonedContainer = container.cloneNode(true);
-                    const clonedButtons = clonedContainer.querySelector('.save-buttons');
-                    if (clonedButtons) {
-                        clonedButtons.style.display = 'none';
-                    }
-                    
-                    tempContainer.appendChild(clonedContainer);
-                    document.body.appendChild(tempContainer);
-                    
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                    
-                    const canvas = await html2canvas(clonedContainer, {
-                        backgroundColor: '#ffffff',
-                        scale: scale,
-                        useCORS: true,
-                        allowTaint: false,
-                        imageTimeout: 10000,
-                        logging: false,
-                        width: container.offsetWidth,
-                        height: segment.end - segment.start,
-                        x: 0,
-                        y: segment.start,
-                        windowWidth: window.innerWidth,
-                        windowHeight: window.innerHeight
+                try {
+                    const container = document.querySelector('.container');
+                    const canvas = await html2canvas(container, {
+                        scale: 2,
+                        backgroundColor: null,
+                        useCORS: true
                     });
                     
-                    images.push(canvas.toDataURL('image/png', 1.0));
-                    document.body.removeChild(tempContainer);
-                }
-                
-                buttons.style.visibility = 'visible';
-                
-                const now = new Date();
-                const baseFilename = `TrendRadar_热点新闻分析_${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
-                
-                for (let i = 0; i < images.length; i++) {
                     const link = document.createElement('a');
-                    link.download = `${baseFilename}_part${i + 1}.png`;
-                    link.href = images[i];
-                    document.body.appendChild(link);
+                    link.download = `TrendRadar-Report-${new Date().getTime()}.png`;
+                    link.href = canvas.toDataURL('image/png');
                     link.click();
-                    document.body.removeChild(link);
                     
-                    await new Promise(resolve => setTimeout(resolve, 100));
+                    btn.textContent = 'Saved!';
+                } catch (e) {
+                    console.error(e);
+                    btn.textContent = 'Error';
                 }
                 
-                button.textContent = `已保存 ${segments.length} 张图片!`;
-                setTimeout(() => {
-                    button.textContent = originalText;
-                    button.disabled = false;
-                }, 2000);
-                
-            } catch (error) {
-                console.error('分段保存失败:', error);
-                const buttons = document.querySelector('.save-buttons');
-                buttons.style.visibility = 'visible';
-                button.textContent = '保存失败';
-                setTimeout(() => {
-                    button.textContent = originalText;
-                    button.disabled = false;
-                }, 2000);
+                setTimeout(() => btn.textContent = originalText, 2000);
             }
-        }
-        
-        document.addEventListener('DOMContentLoaded', function() {
-            window.scrollTo(0, 0);
-        });
-    </script>
-</body>
-</html>
+            
+            // Placeholder for segment save if needed, simplified for now
+            async function saveAsMultipleImages() {
+                alert('Segment save not implemented in this simplified template.');
+            }
+        </script>
+    </body>
+    </html>
+    
