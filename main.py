@@ -3887,7 +3887,7 @@ class NewsAnalyzer:
         self.data_fetcher = DataFetcher(self.proxy_url)
 
         if self.is_github_actions:
-            self._check_version_update()
+            self._check_version()
 
     def _detect_docker_environment(self) -> bool:
         """Detect if running in a Docker container"""
