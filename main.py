@@ -526,14 +526,20 @@ class DataFetcher:
                         title = item["title"]
                         url = item.get("url", "")
                         mobile_url = item.get("mobileUrl", "")
+                        extra = item.get("extra", {})
+                        summary = extra.get("hover", "")
 
                         if title in results[id_value]:
                             results[id_value][title]["ranks"].append(index)
+                            # Update summary if existing one is empty
+                            if summary and not results[id_value][title].get("summary"):
+                                results[id_value][title]["summary"] = summary
                         else:
                             results[id_value][title] = {
                                 "ranks": [index],
                                 "url": url,
                                 "mobileUrl": mobile_url,
+                                "summary": summary,
                             }
                 except json.JSONDecodeError:
                     print(f"Failed to parse {id_value} response")
@@ -575,23 +581,29 @@ def save_titles_to_file(results: Dict, id_to_name: Dict, failed_ids: List) -> st
                     ranks = info.get("ranks", [])
                     url = info.get("url", "")
                     mobile_url = info.get("mobileUrl", "")
+                    summary = info.get("summary", "")
                 else:
                     ranks = info if isinstance(info, list) else []
                     url = ""
                     mobile_url = ""
+                    summary = ""
 
                 rank = ranks[0] if ranks else 1
-                sorted_titles.append((rank, cleaned_title, url, mobile_url))
+                sorted_titles.append((rank, cleaned_title, url, mobile_url, summary))
 
             sorted_titles.sort(key=lambda x: x[0])
 
-            for rank, cleaned_title, url, mobile_url in sorted_titles:
+            for rank, cleaned_title, url, mobile_url, summary in sorted_titles:
                 line = f"{rank}. {cleaned_title}"
 
                 if url:
                     line += f" [URL:{url}]"
                 if mobile_url:
                     line += f" [MOBILE:{mobile_url}]"
+                if summary:
+                    # Replace newlines in summary to keep it on one line
+                    clean_summary = summary.replace("\n", " ").replace("\r", "")
+                    line += f" [SUMMARY:{clean_summary}]"
                 f.write(line + "\n")
 
             f.write("\n")
@@ -713,6 +725,13 @@ def parse_file_titles(file_path: Path) -> Tuple[Dict, Dict]:
                             if url_part.endswith("]"):
                                 url = url_part[:-1]
 
+                        # Extract SUMMARY
+                        summary = ""
+                        if " [SUMMARY:" in title_part:
+                            title_part, summary_part = title_part.rsplit(" [SUMMARY:", 1)
+                            if summary_part.endswith("]"):
+                                summary = summary_part[:-1]
+
                         title = clean_title(title_part.strip())
                         ranks = [rank] if rank is not None else [1]
 
@@ -720,6 +739,7 @@ def parse_file_titles(file_path: Path) -> Tuple[Dict, Dict]:
                             "ranks": ranks,
                             "url": url,
                             "mobileUrl": mobile_url,
+                            "summary": summary,
                         }
 
                     except Exception as e:
@@ -790,6 +810,7 @@ def process_source_data(
             ranks = data.get("ranks", [])
             url = data.get("url", "")
             mobile_url = data.get("mobileUrl", "")
+            summary = data.get("summary", "")
 
             title_info[source_id][title] = {
                 "first_time": time_info,
@@ -798,18 +819,21 @@ def process_source_data(
                 "ranks": ranks,
                 "url": url,
                 "mobileUrl": mobile_url,
+                "summary": summary,
             }
     else:
         for title, data in title_data.items():
             ranks = data.get("ranks", [])
             url = data.get("url", "")
             mobile_url = data.get("mobileUrl", "")
+            summary = data.get("summary", "")
 
             if title not in all_results[source_id]:
                 all_results[source_id][title] = {
                     "ranks": ranks,
                     "url": url,
                     "mobileUrl": mobile_url,
+                    "summary": summary,
                 }
                 title_info[source_id][title] = {
                     "first_time": time_info,
@@ -818,12 +842,14 @@ def process_source_data(
                     "ranks": ranks,
                     "url": url,
                     "mobileUrl": mobile_url,
+                    "summary": summary,
                 }
             else:
                 existing_data = all_results[source_id][title]
                 existing_ranks = existing_data.get("ranks", [])
                 existing_url = existing_data.get("url", "")
                 existing_mobile_url = existing_data.get("mobileUrl", "")
+                existing_summary = existing_data.get("summary", "")
 
                 merged_ranks = existing_ranks.copy()
                 for rank in ranks:
@@ -834,6 +860,7 @@ def process_source_data(
                     "ranks": merged_ranks,
                     "url": existing_url or url,
                     "mobileUrl": existing_mobile_url or mobile_url,
+                    "summary": existing_summary or summary,
                 }
 
                 title_info[source_id][title]["last_time"] = time_info
@@ -843,6 +870,8 @@ def process_source_data(
                     title_info[source_id][title]["url"] = url
                 if not title_info[source_id][title].get("mobileUrl"):
                     title_info[source_id][title]["mobileUrl"] = mobile_url
+                if not title_info[source_id][title].get("summary"):
+                    title_info[source_id][title]["summary"] = summary
 
 
 def detect_latest_new_titles(
@@ -2308,98 +2337,163 @@ def render_email_template(
         failed_list = ", ".join([html_escape(pid) for pid in report_data["failed_ids"]])
         html += f"""
         <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 15px; margin-bottom: 25px;">
-            <div style="color: #991b1b; font-weight: 700; font-size: 14px; margin-bottom: 5px;">⚠️ Connection Failed</div>
+            <div style="color: #991b1b; font-weight: 600; margin-bottom: 5px; display: flex; align-items: center;">
+                <span style="margin-right: 6px;">⚠️</span> Failed Sources
+            </div>
             <div style="color: #b91c1c; font-size: 13px;">{failed_list}</div>
         </div>
         """
 
-    # Main Stats
-    if report_data["stats"]:
-        html += f"""
-        <div style="margin-bottom: 20px; border-bottom: 2px solid {c_bg}; padding-bottom: 10px;">
-            <span style="font-size: 18px; font-weight: 700; color: {c_text};">🔥 Trending Topics</span>
-        </div>
-        """
-        
-        for stat in report_data["stats"]:
-            count = stat["count"]
-            word = html_escape(stat["word"])
-            
-            # Badge color
-            badge_bg = "#f3f4f6"
-            badge_color = c_text_light
-            if count >= 10:
-                badge_bg = "#fee2e2"
-                badge_color = "#ef4444"
-            elif count >= 5:
-                badge_bg = "#ffedd5"
-                badge_color = "#f97316"
-                
-            html += f"""
-            <div style="margin-bottom: 30px;">
-                <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 15px;">
-                    <tr>
-                        <td align="left">
-                            <span style="font-size: 18px; font-weight: 700; color: {c_text}; margin-right: 10px;">{word}</span>
-                            <span style="background-color: {badge_bg}; color: {badge_color}; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 4px;">{count} items</span>
-                        </td>
-                    </tr>
-                </table>
-            """
-            
-            for title_data in stat["titles"]:
-                title = html_escape(title_data["title"])
-                source = html_escape(title_data["source_name"])
-                url = title_data.get("mobile_url") or title_data.get("url", "#")
-                is_new = title_data.get("is_new", False)
-                
-                new_badge = ""
-                if is_new:
-                    new_badge = f'<span style="background-color: #10b981; color: white; font-size: 9px; font-weight: 700; padding: 2px 4px; border-radius: 3px; margin-right: 5px; vertical-align: middle;">NEW</span>'
-                
-                html += f"""
-                <div style="margin-bottom: 12px; padding: 12px; background-color: #ffffff; border: 1px solid {c_border}; border-radius: 8px;">
-                    <div style="margin-bottom: 6px; font-size: 11px; color: {c_text_light};">
-                        {new_badge}
-                        <span style="background-color: {c_bg}; padding: 2px 6px; border-radius: 3px; font-weight: 600; color: {c_text};">{source}</span>
-                    </div>
-                    <a href="{url}" style="text-decoration: none; color: {c_text}; font-size: 15px; font-weight: 600; line-height: 1.4; display: block;">{title}</a>
-                </div>
-                """
-            
-            html += "</div>"
-
-    # New News
+    # New Titles (Prioritize displaying new items)
     if report_data["new_titles"]:
-        total_new = report_data['total_new_count']
         html += f"""
-        <div style="margin-top: 40px; margin-bottom: 20px; border-bottom: 2px solid {c_bg}; padding-bottom: 10px;">
-            <span style="font-size: 18px; font-weight: 700; color: {c_text};">⚡ New Discoveries</span>
-            <span style="background-color: {c_bg}; color: {c_text_light}; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 10px; margin-left: 8px;">{total_new}</span>
-        </div>
+        <div style="margin-bottom: 30px;">
+            <div style="display: flex; align-items: center; margin-bottom: 20px;">
+                <div style="background: {c_primary}; width: 4px; height: 24px; border-radius: 2px; margin-right: 12px;"></div>
+                <h2 style="margin: 0; font-size: 18px; color: {c_text};">Latest Updates</h2>
+            </div>
         """
         
+        # Collect titles already shown
+        shown_titles = set()
         for source_data in report_data["new_titles"]:
             source_name = html_escape(source_data["source_name"])
-            
             html += f"""
             <div style="margin-bottom: 25px;">
-                <div style="font-size: 16px; font-weight: 700; color: {c_text}; margin-bottom: 12px;">{source_name}</div>
+                <div style="font-size: 14px; font-weight: 700; color: {c_text_light}; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; border-bottom: 1px solid {c_border}; padding-bottom: 8px;">
+                    {source_name}
+                </div>
             """
             
             for title_data in source_data["titles"]:
                 title = html_escape(title_data["title"])
-                url = title_data.get("mobile_url") or title_data.get("url", "#")
+                url = title_data.get("mobile_url") or title_data.get("url")
+                summary = title_data.get("summary", "")
+                shown_titles.add(title_data["title"]) # Add original title to set
                 
                 html += f"""
-                <div style="margin-bottom: 10px; padding: 10px; background-color: #ffffff; border: 1px solid {c_border}; border-radius: 6px;">
-                    <a href="{url}" style="text-decoration: none; color: {c_text}; font-size: 14px; font-weight: 500; line-height: 1.4; display: block;">{title}</a>
+                <div style="margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #f3f4f6;">
+                    <div style="font-size: 16px; font-weight: 600; line-height: 1.4; margin-bottom: 6px;">
+                """
+                
+                if url:
+                    html += f'<a href="{html_escape(url)}" style="text-decoration: none; color: {c_text}; hover: color: {c_primary};">{title}</a>'
+                else:
+                    html += f'<span style="color: {c_text};">{title}</span>'
+                    
+                html += "</div>"
+                
+                if summary:
+                    clean_summary = html_escape(summary).replace("\n", " ")
+                    html += f"""
+                    <div style="font-size: 14px; color: #4b5563; line-height: 1.6; margin-bottom: 8px;">
+                        {clean_summary}
+                    </div>
+                    """
+                
+                # Metadata line
+                html += f"""
+                    <div style="font-size: 12px; color: #9ca3af; display: flex; align-items: center;">
+                        <span style="background-color: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-weight: 500; font-size: 11px;">NEW</span>
+                        {f'<span style="margin-left: 10px;">🔗 <a href="{html_escape(url)}" style="color: {c_primary}; text-decoration: none;">Read more</a></span>' if url else ''}
+                    </div>
                 </div>
                 """
+            html += "</div>"
+        html += "</div>"
+
+    # Trending Stats (Simplified or Hidden based on user preference, but keeping it for now as secondary)
+    # User requested "I can see all keywords maybe that shouldbt be visible"
+    # So we will hide the detailed keyword stats list and only show news items grouped by keyword if they are NOT already shown in "New Titles"
+    
+    # Collect titles already shown (moved up to be available for both sections)
+    # shown_titles = set()
+    # for source in report_data.get("new_titles", []):
+    #     for t in source["titles"]:
+    #         shown_titles.add(t["title"])
+
+    if report_data["stats"]:
+        has_other_news = False
+        # Check if there are news not yet shown
+        for stat in report_data["stats"]:
+            for t in stat["titles"]:
+                if t["title"] not in shown_titles:
+                    has_other_news = True
+                    break
+            if has_other_news:
+                break
+        
+        if has_other_news:
+            html += f"""
+            <div style="margin-top: 40px;">
+                <div style="display: flex; align-items: center; margin-bottom: 20px;">
+                    <div style="background: #8b5cf6; width: 4px; height: 24px; border-radius: 2px; margin-right: 12px;"></div>
+                    <h2 style="margin: 0; font-size: 18px; color: {c_text};">Trending Topics</h2>
+                </div>
+            """
             
+            for stat in report_data["stats"]:
+                # Skip if all titles in this group are already shown
+                group_titles = [t for t in stat["titles"] if t["title"] not in shown_titles]
+                if not group_titles:
+                    continue
+                    
+                word = html_escape(stat["word"])
+                count = stat["count"]
+                
+                html += f"""
+                <div style="margin-bottom: 30px;">
+                    <div style="background-color: #f8fafc; padding: 8px 12px; border-radius: 6px; margin-bottom: 15px; display: inline-block;">
+                        <span style="font-weight: 700; color: #475569;">#{word}</span>
+                        <span style="font-size: 12px; color: #94a3b8; margin-left: 6px;">{count} items</span>
+                    </div>
+                """
+                
+                for title_data in group_titles:
+                    title = html_escape(title_data["title"])
+                    url = title_data.get("mobile_url") or title_data.get("url")
+                    summary = title_data.get("summary", "")
+                    
+                    html += f"""
+                    <div style="margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #f3f4f6;">
+                        <div style="font-size: 15px; font-weight: 600; line-height: 1.4; margin-bottom: 4px;">
+                    """
+                    
+                    if url:
+                        html += f'<a href="{html_escape(url)}" style="text-decoration: none; color: {c_text};">{title}</a>'
+                    else:
+                        html += f'<span style="color: {c_text};">{title}</span>'
+                        
+                    html += "</div>"
+                    
+                    if summary:
+                        clean_summary = html_escape(summary).replace("\n", " ")
+                        html += f"""
+                        <div style="font-size: 13px; color: #4b5563; line-height: 1.5; margin-bottom: 6px;">
+                            {clean_summary}
+                        </div>
+                        """
+                        
+                    if url:
+                        html += f"""
+                        <div style="font-size: 12px;">
+                            <a href="{html_escape(url)}" style="color: {c_primary}; text-decoration: none;">Read more →</a>
+                        </div>
+                        """
+                    html += "</div>"
+                html += "</div>"
             html += "</div>"
 
-    # Footer
+    # Empty State
+    if not report_data["stats"] and not report_data["new_titles"] and not report_data["failed_ids"]:
+        html += f"""
+        <div style="text-align: center; padding: 40px 20px; color: {c_text_light};">
+            <div style="font-size: 48px; margin-bottom: 15px;">📭</div>
+            <div style="font-size: 16px; font-weight: 500;">No new updates found</div>
+            <div style="font-size: 14px; margin-top: 5px;">We'll keep looking for you.</div>
+        </div>
+        """
+
     html += f"""
                             </td>
                         </tr>
