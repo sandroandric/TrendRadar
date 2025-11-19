@@ -2332,6 +2332,9 @@ def render_email_template(
                             <td style="padding: 30px;">
     """
     
+    # Initialize shown_titles set to track what's already displayed
+    shown_titles = set()
+    
     # Failed IDs
     if report_data["failed_ids"]:
         failed_list = ", ".join([html_escape(pid) for pid in report_data["failed_ids"]])
@@ -2354,8 +2357,6 @@ def render_email_template(
             </div>
         """
         
-        # Collect titles already shown
-        shown_titles = set()
         for source_data in report_data["new_titles"]:
             source_name = html_escape(source_data["source_name"])
             html += f"""
